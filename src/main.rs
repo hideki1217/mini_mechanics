@@ -158,9 +158,10 @@ impl Sphere {
         (self.center - &rhs.center).norm() <= (self.radius + rhs.radius)
     }
 
-    fn progress(&self, dt: f32, force: &Vec3) -> Sphere {
+    fn progress(&self, dt: f32, force_field: fn(&Vec3) -> Vec3) -> Sphere {
+        // Leap-frog
         let next_center = self.center + self.verosity * dt;
-        let next_verocity = self.verosity + force * (dt / self.weight);
+        let next_verocity = self.verosity + force_field(&next_center) * (dt / self.weight);
 
         Sphere {
             center: next_center,
@@ -179,7 +180,7 @@ struct World {
 impl World {
     fn progress(&self) -> World {
         const DT: f32 = 1e-2;
-        const EPS: f32 = 1. - 1e-1;
+        const EPS: f32 = 1. - 1e-2;
 
         let mut objects: Vec<Sphere> = self.objects.iter().map(|x| x.clone()).collect();
         for i in 1..objects.len() {
@@ -201,7 +202,7 @@ impl World {
         }
         let objects: Vec<Sphere> = objects
             .iter()
-            .map(|x| x.progress(DT, &(self.vector_field)(&x.center)))
+            .map(|x| x.progress(DT, self.vector_field))
             .collect();
 
         World {
@@ -270,6 +271,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 rgb: RGB::red(),
                 radius: 1.,
                 center: Vec3(-4., -9., -1.),
+                verosity: -Vec3::ones(),
+            },
+            Sphere {
+                weight: 1.,
+                rgb: RGB::red(),
+                radius: 1.,
+                center: Vec3(1., -3., -6.),
+                verosity: -Vec3::ones(),
+            },
+            Sphere {
+                weight: 1.,
+                rgb: RGB::red(),
+                radius: 1.,
+                center: Vec3(10., -2., -6.),
+                verosity: -Vec3::ones(),
+            },
+            Sphere {
+                weight: 1.,
+                rgb: RGB::red(),
+                radius: 1.,
+                center: Vec3(15., -3., -6.),
+                verosity: -Vec3::ones(),
+            },
+            Sphere {
+                weight: 1.,
+                rgb: RGB::red(),
+                radius: 1.,
+                center: Vec3(2., -4., -2.),
                 verosity: -Vec3::ones(),
             },
         ],
