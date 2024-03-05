@@ -289,6 +289,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         const X_DIRECTION: Vec3 = Vec3(1., 0., 0.);
         const Y_DIRECTION: Vec3 = Vec3(0., 1., 0.);
         const Z_DIRECTION: Vec3 = Vec3(0., 0., -1.);
+        const LIGHT_POSITION: Vec3 = Vec3(40., 40., 10.);
 
         const X_EYE_ANGLE: f32 = PI / 8.;
         const EYE_CELL_ANGLE: f32 = X_EYE_ANGLE / WIDTH as f32;
@@ -308,9 +309,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     v / v.norm()
                 };
 
-                let mut visible_obj: Option<(f32, &Sphere)> = None;
+                let mut visible_obj: Option<(f32, Vec3, &Sphere)> = None;
                 for object in world.objects() {
-                    let col_pos = {
+                    let collision_pos = {
                         let (e, d_e) = {
                             let v = object.center - camera_pos;
                             let dist = v.norm();
@@ -327,14 +328,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             None
                         }
                     };
-                    if let Some(col_pos) = col_pos {
-                        let d = (col_pos - camera_pos).norm();
+                    if let Some(collision_pos) = collision_pos {
+                        let d = (collision_pos - camera_pos).norm();
                         match visible_obj {
-                            Some((min_dist, _)) if min_dist > d => {
-                                visible_obj = Some((d, object));
+                            Some((min_dist, _, _)) if min_dist > d => {
+                                visible_obj = Some((d, collision_pos, object));
                             }
                             None => {
-                                visible_obj = Some((d, object));
+                                visible_obj = Some((d, collision_pos, object));
                             }
                             _ => {}
                         }
@@ -342,8 +343,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 let base: usize = (x + y * WIDTH) * 3;
-                if let Some((d, obj)) = visible_obj {
-                    let brawer = CAMERA_POSITION.norm().powi(2) / 1.4 / d.powi(2);
+                if let Some((_, collision_pos, obj)) = visible_obj {
+                    let (light_n, light_d) = {
+                        let v = LIGHT_POSITION - collision_pos;
+                        let d = v.norm();
+                        (v / d, d)
+                    };
+                    let obj_n = {
+                        let v = collision_pos - obj.center;
+                        v / v.norm()
+                    };
+
+                    let brawer = ((light_n.inner(&obj_n) + 0.2) / 1.2).max(0.1) * LIGHT_POSITION.norm().powi(2) / 1.4 / light_d.powi(2);
                     pixel_data[base + 0] = (obj.rgb.0 as f32 * brawer).max(1.).min(255.) as u8;
                     pixel_data[base + 1] = (obj.rgb.1 as f32 * brawer).max(1.).min(255.) as u8;
                     pixel_data[base + 2] = (obj.rgb.2 as f32 * brawer).max(1.).min(255.) as u8;
